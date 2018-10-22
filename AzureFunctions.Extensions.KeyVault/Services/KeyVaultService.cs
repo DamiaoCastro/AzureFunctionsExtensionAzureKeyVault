@@ -1,5 +1,6 @@
 ﻿using Microsoft.Azure.KeyVault;
 using Microsoft.IdentityModel.Clients.ActiveDirectory;
+using System;
 using System.Threading;
 using System.Threading.Tasks;
 
@@ -26,6 +27,8 @@ namespace AzureFunctions.Extensions.KeyVault.Services
             var key = $"{keyVaultAttribute.ConfigurationNodeName}-{keyVaultAttribute.SecretName}";
             string value = null;
 
+            Exception ex1 = null;
+
             await semaphoreSlim.WaitAsync();
             try
             {
@@ -33,7 +36,7 @@ namespace AzureFunctions.Extensions.KeyVault.Services
                 if (value == null)
                 {
 
-                    (string baseUrl, string clientId, string clientSecret)  = KeyVaultAttributeSettingsService.GetSettings(keyVaultAttribute);
+                    (string baseUrl, string clientId, string clientSecret) = KeyVaultAttributeSettingsService.GetSettings(keyVaultAttribute);
 
                     KeyVaultClient keyVaultClient = keyVaultClientCacheService.GetObject(keyVaultAttribute.ConfigurationNodeName, keyVaultClientCacheMinutes);
                     if (keyVaultClient == null)
@@ -52,10 +55,16 @@ namespace AzureFunctions.Extensions.KeyVault.Services
                     return resultValue;
                 }
             }
+            catch (Exception ex)
+            {
+                ex1 = ex;
+            }
             finally
             {
                 semaphoreSlim.Release();
             }
+
+            if (ex1 != null) { throw ex1; }
 
             return value;
         }
